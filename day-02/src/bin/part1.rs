@@ -103,25 +103,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_process_row_all_sets_ok_one_digit_id() {
+    fn part1_process_row_all_sets_ok_one_digit_id() {
         let row = "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green";
         assert_eq!(1, process_row(row));
     }
 
     #[test]
-    fn test_process_row_all_sets_ok_multi_digit_id() {
+    fn part1_process_row_all_sets_ok_multi_digit_id() {
         let row = "Game 99: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green";
         assert_eq!(99, process_row(row));
     }
 
     #[test]
-    fn test_process_row_some_sets_not_ok() {
+    fn part1_process_row_some_sets_not_ok() {
         let row = "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red";
         assert_eq!(0, process_row(row));
     }
 
     #[test]
-    fn test_process() {
+    fn part1_process() {
         let input = r#"
             Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
             Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
