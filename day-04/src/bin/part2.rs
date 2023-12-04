@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 fn main() {
     let input = include_str!("./input.txt");
@@ -6,7 +6,7 @@ fn main() {
     println!("Part 2 answer: {answer}");
 }
 
-fn process(input: &str) -> u32 {
+fn process(input: &str) -> usize {
     let lines: Vec<&str> = input
         .lines()
         .filter_map(|l| match l.trim() {
@@ -15,22 +15,14 @@ fn process(input: &str) -> u32 {
         })
         .collect();
 
-    // use BTreeMap here to be able to iterate in order
-    let mut cards: BTreeMap<u32, usize> = BTreeMap::new();
+    // Since cards have continuously increasing ids, we can use a vector to save per-card scores
+    let mut cards: Vec<usize> = Vec::new();
     for line in lines {
-        if let Some((card_and_num, lists)) = line.split_once(':') {
-            if let Some((_, id)) = card_and_num.split_once(' ') {
-                let card_id = id
-                    .trim_start()
-                    .parse::<u32>()
-                    .expect("failed to parse card number");
-
-                let num_common = cards.entry(card_id).or_default();
-                if let Some((winning_input, our_input)) = lists.split_once('|') {
-                    let winning = parse_list(winning_input);
-                    let our = parse_list(our_input);
-                    *num_common = our.intersection(&winning).count();
-                }
+        if let Some((_, lists)) = line.split_once(':') {
+            if let Some((winning_input, our_input)) = lists.split_once('|') {
+                let winning = parse_list(winning_input);
+                let our = parse_list(our_input);
+                cards.push(our.intersection(&winning).count());
             }
         }
     }
@@ -47,12 +39,12 @@ fn parse_list(input: &str) -> HashSet<u32> {
         .collect()
 }
 
-fn count_cards(cards: BTreeMap<u32, usize>) -> u32 {
-    let mut counts: HashMap<u32, u32> = HashMap::new();
-    for (id, num_common) in cards.iter() {
-        let count = *counts.entry(*id).and_modify(|curr| *curr += 1).or_insert(1);
+fn count_cards(cards: Vec<usize>) -> usize {
+    let mut counts: HashMap<usize, usize> = HashMap::new();
+    for (id, num_common) in cards.iter().enumerate() {
+        let count = *counts.entry(id).and_modify(|curr| *curr += 1).or_insert(1);
         for i in 1..=*num_common {
-            let copy_id = id + (i as u32);
+            let copy_id = id + i;
             counts
                 .entry(copy_id)
                 .and_modify(|curr| *curr += count)
