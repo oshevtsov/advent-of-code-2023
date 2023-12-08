@@ -4,7 +4,6 @@ fn main() {
     let input = include_str!("./input.txt");
     let answer = process(input);
     println!("Part 1 answer: {answer}");
-    assert_eq!(19637, answer);
 }
 
 fn process(input: &str) -> usize {
