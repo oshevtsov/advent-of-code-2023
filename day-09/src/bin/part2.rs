@@ -36,10 +36,10 @@ fn process_line(line: &[isize]) -> isize {
 
     let seq_len = sequences.len();
     for i in 0..seq_len - 1 {
-        let prev_last = *sequences.get(seq_len - i - 1).unwrap().first().unwrap();
+        let prev_first = *sequences.get(seq_len - i - 1).unwrap().first().unwrap();
         let curr = sequences.get_mut(seq_len - i - 2).unwrap();
-        let curr_new_last = curr.first().unwrap() - prev_last;
-        curr.insert(0, curr_new_last);
+        let curr_new_first = curr.first().unwrap() - prev_first;
+        curr.insert(0, curr_new_first);
     }
     *sequences.first().unwrap().first().unwrap()
 }
