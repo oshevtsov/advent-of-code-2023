@@ -11,6 +11,15 @@ fn main() {
 }
 
 fn process(input: &str) -> usize {
+    let mut lines = split_lines(input);
+
+    // parse input
+    let workflows = parse_workflows(&mut lines).unwrap_or_else(|err| panic!("{err}"));
+
+    analyze_workflows_bfs(&workflows)
+}
+
+fn split_lines(input: &str) -> VecDeque<&str> {
     let mut lines: VecDeque<&str> = input.lines().map(|l| l.trim()).collect();
 
     // get rid of any empty lines in the beginning
@@ -21,10 +30,7 @@ fn process(input: &str) -> usize {
         lines.pop_front();
     }
 
-    // parse input
-    let workflows = parse_workflows(&mut lines).unwrap_or_else(|err| panic!("{err}"));
-
-    analyze_workflows(&workflows)
+    lines
 }
 
 fn parse_workflows(lines: &mut VecDeque<&str>) -> Result<HashMap<String, Vec<Rule>>> {
@@ -53,7 +59,72 @@ fn parse_workflows(lines: &mut VecDeque<&str>) -> Result<HashMap<String, Vec<Rul
 
 struct Step(String, HashMap<Category, (usize, usize)>);
 
-fn analyze_workflows(workflows: &HashMap<String, Vec<Rule>>) -> usize {
+fn analyze_workflows_dfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
+    let accept = String::from("A");
+    let reject = String::from("R");
+    let mut steps: Vec<Step> = Vec::new();
+    steps.push(Step(
+        String::from("in"),
+        HashMap::from([
+            (Category::X, (1, 4000)),
+            (Category::M, (1, 4000)),
+            (Category::A, (1, 4000)),
+            (Category::S, (1, 4000)),
+        ]),
+    ));
+
+    let mut total = 0;
+    while let Some(Step(next_wf, mut curr_rating_range)) = steps.pop() {
+        if next_wf == reject {
+            continue;
+        }
+
+        if next_wf == accept {
+            total += curr_rating_range
+                .values()
+                .fold(1, |acc, (min_v, max_v)| acc * (max_v - min_v + 1));
+            continue;
+        }
+
+        for rule in workflows[&next_wf].iter() {
+            if rule.condition.is_none() {
+                steps.push(Step(
+                    rule.next_workflow_name.clone(),
+                    curr_rating_range.clone(),
+                ));
+                continue;
+            }
+
+            let condition = rule.condition.unwrap();
+            let mut new_rating_range = curr_rating_range.clone();
+            match condition.op {
+                Operation::Greater => {
+                    new_rating_range
+                        .entry(condition.cat)
+                        .and_modify(|(min_v, _)| *min_v = condition.value + 1);
+
+                    curr_rating_range
+                        .entry(condition.cat)
+                        .and_modify(|(_, max_v)| *max_v = condition.value);
+                }
+                Operation::LessThan => {
+                    new_rating_range
+                        .entry(condition.cat)
+                        .and_modify(|(_, max_v)| *max_v = condition.value - 1);
+
+                    curr_rating_range
+                        .entry(condition.cat)
+                        .and_modify(|(min_v, _)| *min_v = condition.value);
+                }
+            }
+            steps.push(Step(rule.next_workflow_name.clone(), new_rating_range));
+        }
+    }
+
+    total
+}
+
+fn analyze_workflows_bfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
     let accept = String::from("A");
     let reject = String::from("R");
     let mut steps: VecDeque<Step> = VecDeque::new();
@@ -206,6 +277,36 @@ impl From<char> for Category {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn part2_analyze_workflows() -> Result<()> {
+        let input = r#"
+            px{a<2006:qkq,m>2090:A,rfg}
+            pv{a>1716:R,A}
+            lnx{m>1548:A,A}
+            rfg{s<537:gd,x>2440:R,A}
+            qs{s>3448:A,lnx}
+            qkq{x<1416:A,crn}
+            crn{x>2662:A,R}
+            in{s<1351:px,qqz}
+            qqz{s>2770:qs,m<1801:hdj,R}
+            gd{a>3333:R,R}
+            hdj{m>838:A,pv}
+
+            {x=787,m=2655,a=1222,s=2876}
+            {x=1679,m=44,a=2067,s=496}
+            {x=2036,m=264,a=79,s=2244}
+            {x=2461,m=1339,a=466,s=291}
+            {x=2127,m=1623,a=2188,s=1013}
+        "#;
+        let mut lines = split_lines(input);
+        let workflows = parse_workflows(&mut lines)?;
+        assert_eq!(
+            analyze_workflows_bfs(&workflows),
+            analyze_workflows_dfs(&workflows)
+        );
+        Ok(())
+    }
 
     #[test]
     fn part2_process() {
