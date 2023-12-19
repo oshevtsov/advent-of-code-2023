@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Error, Ok, Result};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     str::FromStr,
 };
 
@@ -72,6 +72,7 @@ fn analyze_workflows_dfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             (Category::S, (1, 4000)),
         ]),
     ));
+    let mut visited: HashSet<String> = HashSet::new();
 
     let mut total = 0;
     while let Some(Step(next_wf, mut curr_rating_range)) = steps.pop() {
@@ -86,6 +87,11 @@ fn analyze_workflows_dfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             continue;
         }
 
+        if visited.contains(&next_wf) {
+            continue;
+        }
+
+        visited.insert(next_wf.clone());
         for rule in workflows[&next_wf].iter() {
             if rule.condition.is_none() {
                 steps.push(Step(
@@ -96,28 +102,42 @@ fn analyze_workflows_dfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             }
 
             let condition = rule.condition.unwrap();
-            let mut new_rating_range = curr_rating_range.clone();
-            match condition.op {
-                Operation::Greater => {
-                    new_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(min_v, _)| *min_v = condition.value + 1);
-
-                    curr_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(_, max_v)| *max_v = condition.value);
+            if let Some((min_v, max_v)) = curr_rating_range.get(&condition.cat) {
+                if min_v > max_v {
+                    break;
                 }
-                Operation::LessThan => {
-                    new_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(_, max_v)| *max_v = condition.value - 1);
 
-                    curr_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(min_v, _)| *min_v = condition.value);
+                let mut new_rating_range = curr_rating_range.clone();
+                match condition.op {
+                    Operation::Greater => {
+                        if *min_v <= condition.value {
+                            new_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(min_v, _)| *min_v = condition.value + 1);
+                        }
+
+                        if *max_v > condition.value {
+                            curr_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(_, max_v)| *max_v = condition.value);
+                        }
+                    }
+                    Operation::LessThan => {
+                        if *max_v >= condition.value {
+                            new_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(_, max_v)| *max_v = condition.value - 1);
+                        }
+
+                        if *min_v < condition.value {
+                            curr_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(min_v, _)| *min_v = condition.value);
+                        }
+                    }
                 }
+                steps.push(Step(rule.next_workflow_name.clone(), new_rating_range));
             }
-            steps.push(Step(rule.next_workflow_name.clone(), new_rating_range));
         }
     }
 
@@ -137,6 +157,7 @@ fn analyze_workflows_bfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             (Category::S, (1, 4000)),
         ]),
     ));
+    let mut visited: HashSet<String> = HashSet::new();
 
     let mut total = 0;
     while let Some(Step(next_wf, mut curr_rating_range)) = steps.pop_front() {
@@ -151,6 +172,11 @@ fn analyze_workflows_bfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             continue;
         }
 
+        if visited.contains(&next_wf) {
+            continue;
+        }
+
+        visited.insert(next_wf.clone());
         for rule in workflows[&next_wf].iter() {
             if rule.condition.is_none() {
                 steps.push_back(Step(
@@ -161,28 +187,42 @@ fn analyze_workflows_bfs(workflows: &HashMap<String, Vec<Rule>>) -> usize {
             }
 
             let condition = rule.condition.unwrap();
-            let mut new_rating_range = curr_rating_range.clone();
-            match condition.op {
-                Operation::Greater => {
-                    new_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(min_v, _)| *min_v = condition.value + 1);
-
-                    curr_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(_, max_v)| *max_v = condition.value);
+            if let Some((min_v, max_v)) = curr_rating_range.get(&condition.cat) {
+                if min_v > max_v {
+                    break;
                 }
-                Operation::LessThan => {
-                    new_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(_, max_v)| *max_v = condition.value - 1);
 
-                    curr_rating_range
-                        .entry(condition.cat)
-                        .and_modify(|(min_v, _)| *min_v = condition.value);
+                let mut new_rating_range = curr_rating_range.clone();
+                match condition.op {
+                    Operation::Greater => {
+                        if *min_v <= condition.value {
+                            new_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(min_v, _)| *min_v = condition.value + 1);
+                        }
+
+                        if *max_v > condition.value {
+                            curr_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(_, max_v)| *max_v = condition.value);
+                        }
+                    }
+                    Operation::LessThan => {
+                        if *max_v >= condition.value {
+                            new_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(_, max_v)| *max_v = condition.value - 1);
+                        }
+
+                        if *min_v < condition.value {
+                            curr_rating_range
+                                .entry(condition.cat)
+                                .and_modify(|(min_v, _)| *min_v = condition.value);
+                        }
+                    }
                 }
+                steps.push_back(Step(rule.next_workflow_name.clone(), new_rating_range));
             }
-            steps.push_back(Step(rule.next_workflow_name.clone(), new_rating_range));
         }
     }
 
