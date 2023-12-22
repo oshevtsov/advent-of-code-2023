@@ -38,9 +38,8 @@ fn process(input: &str, num_steps: usize) -> usize {
 
     // Now we can make two steps at a time, since we took into account the parity of steps at the
     // beginning.
+    let mut tmp = Vec::new();
     for _ in 1..=steps_left / 2 {
-        let mut tmp = Vec::new();
-
         // first step
         while let Some(curr_pos) = next_tiles.pop() {
             for next_pos in make_step(curr_pos, &map) {
