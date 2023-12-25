@@ -1,12 +1,58 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, usize};
 
 type Pos = (usize, usize);
 type PosSuper = (Pos, isize, isize);
 
 fn main() {
     let input = include_str!("./input.txt");
-    let answer = process(input, 26501365);
+    let answer = process_part2(input, 26501365);
     println!("Part 2 answer: {answer}");
+}
+
+// The general solution to the problem is below, but the number of steps to make on an infinite
+// grid is too big to use that algorithm. So, there should be some properties of the input that
+// allow speeding up this process.
+fn process_part2(input: &str, num_steps: usize) -> usize {
+    let (map, pos) = parse_input(input);
+
+    // First of all:
+    // - map is square
+    // - grid size is odd: 131
+    // - starting position is right in the center: (65, 65)
+    let (pos_x, pos_y) = pos;
+    let num_rows = map.len();
+    let num_cols = map.first().expect("map is empty").len();
+    assert_eq!(num_rows, num_cols);
+    assert_ne!(0, num_rows % 2);
+    assert_eq!(pos_x, pos_y);
+    assert_eq!(pos_x, num_rows / 2);
+
+    // After exploring the initial map in the supergrid, one can notice the following observation.
+    // Due to symmetry of the input, the number of explored tiles grows quadratically with each
+    // period (number of tiles proportional to explored area perimeter, which by istelf grows
+    // linearly with time/steps).
+    // So, we can deduce the solution by interpolating the data obtained from a few sample points.
+    //
+    // Sample data:
+    let steps: Vec<f64> = vec![65. + 131., 65. + 2. * 131., 65. + 3. * 131.];
+    let mut counts: Vec<f64> = Vec::with_capacity(3);
+
+    for step in steps.iter() {
+        let sub_step = *step as usize;
+        let res = process(input, sub_step);
+        counts.push(res as f64);
+    }
+
+    // Calculate coefficients of a quadratic fit polynomial
+    let a = (counts[2] - 2. * counts[1] + counts[0])
+        / (steps[2] * steps[2] - 2. * steps[1] * steps[1] + steps[0] * steps[0]);
+    let b = (counts[1] - counts[0] - a * steps[1] * steps[1] + a * steps[0] * steps[0])
+        / (steps[1] - steps[0]);
+    let c = counts[0] - a * steps[0] * steps[0] - b * steps[0];
+
+    let tot_steps = num_steps as f64;
+    let result = a * tot_steps * tot_steps + b * tot_steps + c;
+    result as usize
 }
 
 // Make an observation that after the tile has been visited, it will be revisited after two steps
